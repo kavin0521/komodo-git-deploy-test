@@ -1,0 +1,13 @@
+services:
+  web:
+    image: nginx:alpine
+    container_name: komodo-git-deploy-test-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:19192:80"
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        printf '%s\n' '<!doctype html><html><head><title>Komodo Git Deploy Test</title></head><body><h1>Komodo Git Deploy Test v1</h1><p>Deployed from GitHub.</p></body></html>' > /usr/share/nginx/html/index.html
+        && exec nginx -g 'daemon off;'
