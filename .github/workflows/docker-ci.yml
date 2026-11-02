@@ -1,0 +1,48 @@
+name: Docker CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-ci:
+    name: Build and test Docker image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
+
+      - name: Build Docker image
+        run: docker build --pull --tag komodo-git-deploy-test:${GITHUB_SHA} .
+
+      - name: Run container and test webpage
+        shell: bash
+        run: |
+          IMAGE="komodo-git-deploy-test:${GITHUB_SHA}"
+
+          docker run -d \
+            --name komodo-web-test \
+            -p 127.0.0.1:19192:80 \
+            "$IMAGE"
+
+          cleanup() {
+            docker rm -f komodo-web-test >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for attempt in {1..10}; do
+            if curl --fail --silent http://127.0.0.1:19192/ -o response.html; then
+              break
+            fi
+            sleep 2
+          done
+
+          grep -Fq "Komodo Image Build Test v2" response.html
+          grep -Fq "Automatic redeployment test successful." response.html
